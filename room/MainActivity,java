@@ -1,0 +1,94 @@
+import android.os.Bundle;
+import android.text.TextUtils;
+import android.view.View;
+import android.widget.Button;
+import android.widget.EditText;
+import android.widget.TextView;
+
+import androidx.appcompat.app.AppCompatActivity;
+
+import java.util.List;
+
+
+public class MainActivity extends AppCompatActivity {
+
+    private EditText etNombre, etEdad;
+    private TextView tvListado;
+    private PersonaDAO personaDAO;
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_main);
+
+        etNombre = findViewById(R.id.etNombre);
+        etEdad = findViewById(R.id.etEdad);
+        tvListado = findViewById(R.id.tvListado);
+        Button btnGuardar = findViewById(R.id.btnGuardar);
+        Button btnVer = findViewById(R.id.btnVer);
+        Button btnBorrar = findViewById(R.id.btnBorrar);
+
+        //Obtenermos el DAO desde la base de datos
+
+        personaDAO = AppDatabase.getInstance(this).personaDAO();
+
+        btnGuardar.setOnClickListener(new View.OnClickListener() {
+
+            @Override
+            public void onClick(View view) {
+                String nombre = etNombre.getText().toString().trim();
+                String edad = etEdad.getText().toString().trim();
+
+                if(!TextUtils.isEmpty(nombre)){
+                    Persona p = new Persona();
+                    p.nombre = nombre;
+                    p.edad = edad;
+                    personaDAO.insertar(p);
+                    etNombre.setText("");
+                }
+
+            }
+        });
+
+        btnVer.setOnClickListener(pepe ->{
+
+            List<Persona> personas = personaDAO.todas();
+            StringBuilder sb = new StringBuilder();
+
+            if(personas.isEmpty()) {
+                sb.append("SIN DATOS!! (MAIN)");
+            }else {
+                for (Persona p : personas) {
+                    sb.append(p.id).append(" - ").append(p.nombre).append(" ").append(p.edad).append("\n");
+                }
+            }
+            tvListado.setText(sb.toString());
+        });
+
+        //LiveData con patrón Observer.
+
+        btnBorrar.setOnClickListener(v-> {
+            personaDAO.borrarTodo();
+            tvListado.setText("Borraste todo! :O");
+
+        });
+    }
+}
+
+//Para evitar corrupción de datos y tener datos coherentes:
+
+//Condición de carrera ocurre cuando dos o mas hilos acceden o modifican el mismo estado sin coordinación
+//y el resultado termina siendo al azar en la ejecución. Esto produce errores dificilies de diagnosticar
+//como por ejemplo totales mal calculados, duplicados, pérdida de importes actualizados, ect.
+
+//En Android solo DEBERIA correr la UI en el MainThred. El trabajo pesado como consultas hacia internet, Room
+//cifrado, JSON, serialización, deserialización es probable que la pantalla se congele y puede disparar un ANR.
+//Por eso es fundamental llevar estas operaciones al "back" o hilo de fondo y vuelve al mainThread solo para
+//actualizar la UI.
+
+//Rendimiento y escalabilidad eBien usado el paralelismo acelera la app. Si se utiliza mal, la relentiza ocasionando
+//bloqueos inecesarios, generando espera activa, deadlock o livelocks.
+
+//Hilos y sincronización seprararía un "en mi celular funciona bien" ---> "funciona en todos lados"
+
+//En seguridad: Se verificar T1 y lo usás en T2 tras un cambio de contexto. En android, podrían ser tokens ya usados,
+//claves desifradas guardadas en memoria, estados de sesión, ectñ.
